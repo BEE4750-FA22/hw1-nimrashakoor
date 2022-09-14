@@ -1,0 +1,138 @@
+---
+title: "BEE 4750/5750 Homework 1"
+author: "Nimra Shakoor (ns924)"
+date: `j import Dates; Dates.Date(Dates.now())`
+weave_options:
+    term: true
+    cache: off
+    md2pdf:
+        template: "bee4750pdf.tpl"
+    md2html:
+        template: "bee4750html.tpl"
+---
+
+<!-- This setups the environment and installs packages, but doesn't appear in the generated document -->
+<!-- You shouldn't need to modify this -->
+```julia; echo = false; results = "hidden"
+using Pkg
+Pkg.activate(dirname(@__FILE__))
+Pkg.instantiate()
+```
+
+# Problem 1
+
+## Problem 1.1
+
+```julia
+using GraphRecipes, Plots
+
+A = [0 1 1 1;
+        0 0 0 1;
+        0 0 0 1;
+   	    0 0 0 0]
+names = ["  Plant  \n 100 m^3/day WW", 
+            "Method 1: Land Disposal \n \$(X_1)^2/day \n 80% of YUK removed ", 
+            "Method 2: Chem Treatment \n \$1.50/m^3 WW \n e = 1-0.005*X_2", 
+            "Pristine Brook\n <= 20 kg/day YUK"]
+edgelabels = ["" "1 kg/m^3 YUK" "1 kg/m^3 YUK" "1 kg/m^3 YUK"; 
+                "" "" "" "20% of YUK";
+                "" "" "" "e of YUK";
+                "" "" "" "";]
+shapes = [:hexagon, :rect, :rect, :hexagon]
+xpos = [0, -16, -4, 10]
+ypos = [10, 0, 0, -10]
+
+graphplot(A, names=names, edgelabel=edgelabels, markersize=0.75, markershapes=shapes, markercolor=:white, x=xpos, y=ypos)
+```
+
+WW = wastewater
+
+As shown, the water discharged from the Cheap Plastic Products plant has three possible paths before reaching Pristine Brook, 
+which include land disposal, chemical treatment, and no treatment. Input and output YUK quantities of YUK are given between each treatment process.
+
+## Problem 1.2
+
+Method 1: Land Disposal
+
+20% of YUK that is applied to the land is drained, where $X_1$ is the amount of wastewater disposed of on the land. 
+
+```math
+[YUK] = 0.2*X_1 kg/day
+```
+
+$0 < X_1 < 100 m^3/day$
+
+Method 2: Chemical Treatment
+
+e of YUK from the wastewater treated is removed, where $e = 1 - 0.005*X_2$ and $X_2$ is the amount of wastewater treated. So, the resulting amount of YUK in the effluent wastewater is $1 - e =  0.005*X_2$ of the amount produced.
+
+```math
+[YUK] = 0.005*(X_2)^2 kg/day
+```
+
+$0 < X_2 < 100 m^3/day$
+
+Only a maximum of $100 m^3/day$ can be treated in each process since that is how much wastewater produced.
+
+In total,
+$X_1 + X_2 + WW = 100 m^3/day$,
+where WW is volume of untreated wastewater.
+
+## Problem 1.3
+
+```julia
+function method_1(X_1)
+    return 0.2*X_1, (X_1^2)/20
+end
+
+function method_2(X_2)
+    return 0.005*X_2^2, 1.5*X_2
+end
+```
+
+## Problem 1.4
+
+```julia
+using Distributions, Random
+
+concentrations = []
+costs = []
+
+for val in 0:100
+    X_1 = rand(0:100)
+    X_2 = rand(0:(100-X_1))
+    WW = 100 - X_1 - X_2
+    method_1_vals = method_1(X_1)
+    method_2_vals = method_2(X_2)
+    concentration = method_1_vals[1] + method_2_vals[1] + WW
+    append!(concentrations, concentration)
+    cost = method_1_vals[2] + method_2_vals[2]
+    append!(costs, cost)
+end
+
+scatter(concentrations, costs, title="YUK Treatment Costs", xlabel="Concentration of YUK (kg/day)", ylabel="Cost of Treatment (\$)", legend=false)
+vline!([20])
+```
+
+## Problem 1.5
+Any of the treatment plans with a concentration of YUK under the vertical line would meet EPA standards.
+However, not all possible treatment plans are equal, as different parties might want to focus on different 
+methods. For example, the public and regulatory agencies might want to avoid land disposal for contamination fears, 
+whereas the owners of Cheap Plastic Products, Inc. might prefer the cheapest option.
+
+The way I set up my numerical experiment might influence conclusions since, although values were randomly selected, 
+the amount of wastewater treated in method 1 was chosen first, then in method 2, and then in no treatment. 
+The first treatment always has the most values to choose from because the following methods are dependent on how much wastewater remains. 
+So, if I had selected the amount of wastewater that would not be treated first, perhaps there would be more cheap options in the results.
+
+## Problem 1.6
+
+To improve the model, I would account for other factors besides simply meeting the guidelines for YUK concentrations, 
+which may cause the company more than the treatment costs down the line. For example, there must be guidelines or costs related to
+the concentration of YUK allowable on land, which would make sense since there are guidelines for YUK in Pristine Brook.
+
+In the same vein, when interpreting these results, one should keep in mind that the costs are only those directly associated with treatment 
+and do not factor in costs related to creating new infrastructure to implement these methods, for instance. 
+Additionally, we also assumed that there was not already YUK in the land for land treatment, and that YUK does not degrade over time.
+
+# References
